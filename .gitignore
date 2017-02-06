@@ -1,0 +1,12 @@
+/.DS_Store
+/.classpath
+/.gradle/
+/.project
+/.settings/
+/bin/
+/build/
+/lib-old/
+/samples/
+/settings.gradle
+/gradle.properties
+.DS_store

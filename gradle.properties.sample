@@ -1,0 +1,3 @@
+nexusUrl=http://nexus.example.com/nexus/content/repositories/snapshots/
+nexusUsername=wwheeler
+nexusPassword=p@ssword

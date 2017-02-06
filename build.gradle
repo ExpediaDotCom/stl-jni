@@ -1,0 +1,106 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+group = 'com.expedia.stljni'
+version = '1.0.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+  jcenter()
+}
+
+ext {
+  commonsCliVersion = '1.3.1'
+  junitVersion = '4.12'
+  slf4jVersion = '1.7.13'
+}
+
+dependencies {
+  compile(
+    "commons-cli:commons-cli:${commonsCliVersion}",
+    "org.slf4j:slf4j-api:${slf4jVersion}"
+  )
+  testCompile(
+    "junit:junit:${junitVersion}"
+  )
+}
+
+// TODO DRY up the commonly referenced files.
+
+task prepareFortran(type: Exec) {
+  // TODO Would be better to declare dependency on whichever task creates the build dir. [WLW]
+//  workingDir buildDir
+  commandLine 'mkdir', '-p', "${buildDir}/fortran"
+}
+
+task compileFortran(type: Exec) {
+  def src = file("src/main/fortran/stl.f")
+  def obj = file("${buildDir}/fortran/stl.o")
+
+  group "Build"
+  description "Compiles the Fortran sources."
+  commandLine 'gfortran', '-c', '-o', obj, src
+  dependsOn prepareFortran
+}
+
+// http://stackoverflow.com/questions/30133605/best-way-to-define-javah-task-in-gradle
+task generateJniHeaders(type: Exec) {
+  def classpath = sourceSets.main.output.classesDir
+  def jniHeadersDir = file("${buildDir}/c/jni-headers")
+
+  group "Build"
+  description "Generates the JNI headers."
+  commandLine 'javah', '-d', jniHeadersDir, '-classpath', classpath, 'com.expedia.stljni.Stl'
+  dependsOn classes
+}
+
+task compileC(type: Exec) {
+  def src = file("src/main/c/stl.c")
+  def sysHeadersDir = file("/System/Library/Frameworks/JavaVM.framework/Headers")
+  def jniHeadersDir = file("${buildDir}/c/jni-headers")
+  def outputDir = file("${buildDir}/c")
+  def objName = "stl.o"
+
+  group "Build"
+  description "Compiles the C sources."
+  outputDir.exists() || outputDir.mkdirs()
+  workingDir outputDir
+  commandLine 'gcc', '-c', '-o', objName, '-I', sysHeadersDir, '-I', jniHeadersDir, src
+  dependsOn generateJniHeaders
+}
+
+task buildJniLib(type: Exec) {
+  def fortranLib = file("/usr/local/lib/gcc/5/libgfortran.dylib")
+  def outputDir = file("${buildDir}/libs")
+
+  group "Build"
+  description "Builds the JNI library."
+  outputDir.exists() || outputDir.mkdirs()
+  workingDir outputDir
+  commandLine(
+  	'gcc', '-dynamiclib',
+  	'-o', "${outputDir}/libstl_driver.jnilib",
+  	fortranLib,
+  	"${buildDir}/fortran/stl.o",
+  	"${buildDir}/c/stl.o",
+  	'-framework', 'JavaVM')
+  dependsOn compileFortran, compileC
+}
+
+task wrapper(type: Wrapper) {
+  gradleVersion = '2.11'
+}
+
+build.dependsOn buildJniLib
+
+uploadArchives {
+  repositories {
+    mavenDeployer {
+      repository(url: "${nexusUrl}") {
+        authentication(userName: "${nexusUsername}", password: "${nexusPassword}")
+      }
+    }
+  }
+}
