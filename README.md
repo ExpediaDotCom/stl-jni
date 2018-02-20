@@ -1,4 +1,4 @@
-**NOTE: ServiceNow released a [pure-Java STL implementation](https://github.com/ServiceNow/stl-decomp-4j). I haven't tried it out yet, but I'd recommend giving it a shot first. -- Willie **
+> **ServiceNow recently released a [pure-Java STL implementation](https://github.com/ServiceNow/stl-decomp-4j). I haven't tried it out yet, but I'd recommend giving it a shot first. - Willie**
 
 # stl-jni
 
